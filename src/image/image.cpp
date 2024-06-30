@@ -23,7 +23,7 @@ gray_image *image_new(const int width, const int height) {
   image->width = width;
   image->height = height;
   image->stride = ((width + 4 - 1) / 4) * 4;
-  image->data = (float *)_aligned_malloc(image->stride * height * sizeof(float), 16);
+  image->data = (float *)aligned_alloc(16, image->stride * height * sizeof(float));
   if (image->data == nullptr) {
     std::cerr << "Error: image_new() - not enough memory !" << std::endl;
     exit(1);
@@ -67,7 +67,7 @@ void image_delete(gray_image *image) {
   if (image == nullptr) {
     std::cerr << "Warning: Delete image --> Ignore action (image not allocated)" << std::endl;
   } else {
-    _aligned_free(image->data);
+    free(image->data);
     free(image);
   }
 }
@@ -82,7 +82,7 @@ color_image *color_image_new(const int width, const int height) {
   image->width = width;
   image->height = height;
   image->stride = ((width + 4 - 1) / 4) * 4;
-  image->data1 = (float *)_aligned_malloc(3 * image->stride * height * sizeof(float), 16);
+  image->data1 = (float *)aligned_alloc(16, 3 * image->stride * height * sizeof(float));
   if (image->data1 == nullptr) {
     std::cerr << "Error: color_image_new() - not enough memory !" << std::endl;
     exit(1);
@@ -121,7 +121,7 @@ void color_image_delete(color_image *image) {
   if (image == nullptr) {
     std::cerr << "Warning: Delete image --> Ignore action (image not allocated)" << std::endl;
   } else {
-    _aligned_free(image->data1);  // c2 and c3 was allocated at the same moment
+    free(image->data1);  // c2 and c3 was allocated at the same moment
     free(image);
   }
 }

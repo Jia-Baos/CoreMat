@@ -6,11 +6,27 @@
 
 ## 编译命令
 
+### Windows
+
+```
 cmake -B build -G "MinGW Makefiles"
 
 cmake --build build --config Release --target install
+```
 
 [Link](https://github.com/Jia-Baos/Notes/blob/master/CMake/cmake-command.md)
+
+### Linux
+
+```
+sudo mkdir build && cd build
+
+sudo cmake ..
+
+sudo make
+
+sudo make install
+```
 
 ## git添加子模块
 

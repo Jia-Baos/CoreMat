@@ -3,9 +3,9 @@
 #include "gtest/gtest.h"
 
 TEST(test_image, test1) {
-  std::string img_path = "D:/CmakeProject/CoreMat/images/frame_0029.ppm";
-  std::string save_rgb_path = "D:/CmakeProject/CoreMat/img_rgb.ppm";
-  std::string save_gray_path = "D:/CmakeProject/CoreMat/img_gray.ppm";
+  std::string img_path = "/home/jia-baos/Project-CPP/CoreMat/images/frame_0029.ppm";
+  std::string save_rgb_path = "/home/jia-baos/Project-CPP/CoreMat/img_rgb.ppm";
+  std::string save_gray_path = "/home/jia-baos/Project-CPP/CoreMat/img_gray.ppm";
 
   // printf("read img...\n");
   color_image* img_rgb = color_image_load(img_path.c_str());
