@@ -3,36 +3,40 @@
 #include <benchmark/benchmark.h>
 
 // 要 benchmark 的函数
-static void BM_ImageNew(benchmark::State& state) {
-  for (auto _ : state) {
-    gray_image* img_gray = image_new(256, 256);
-    image_delete(img_gray);
-  }
+static void BM_ImageNew(benchmark::State &state)
+{
+    for (auto _ : state) {
+        GrayImage *img_gray = ImageNew(256, 256);
+        ImageDelete(img_gray);
+    }
 }
 
-static void BM_ColorImageNew(benchmark::State& state) {
-  for (auto _ : state) {
-    color_image* img_rgb = color_image_new(256, 256);
-    color_image_delete(img_rgb);
-  }
+static void BM_ColorImageNew(benchmark::State &state)
+{
+    for (auto _ : state) {
+        ColorImage *img_rgb = ColorImageNew(256, 256);
+        ColorImageDelete(img_rgb);
+    }
 }
 
-static void BM_ImageSetVal(benchmark::State& state) {
-  gray_image* img_gray = image_new(256, 256);
-  for (auto _ : state) {
-    image_ones(img_gray);
-    image_erase(img_gray);
-  }
-  image_delete(img_gray);
+static void BM_ImageSetVal(benchmark::State &state)
+{
+    GrayImage *img_gray = ImageNew(256, 256);
+    for (auto _ : state) {
+        ImageOnes(img_gray);
+        ImageErase(img_gray);
+    }
+    ImageDelete(img_gray);
 }
 
-static void BM_ColorImageSetVal(benchmark::State& state) {
-  color_image* img_rgb = color_image_new(256, 256);
-  for (auto _ : state) {
-    color_image_ones(img_rgb);
-    color_image_erase(img_rgb);
-  }
-  color_image_delete(img_rgb);
+static void BM_ColorImageSetVal(benchmark::State &state)
+{
+    ColorImage *img_rgb = ColorImageNew(256, 256);
+    for (auto _ : state) {
+        ColorImageOnes(img_rgb);
+        ColorImageErase(img_rgb);
+    }
+    ColorImageDelete(img_rgb);
 }
 
 // 这一句不能少

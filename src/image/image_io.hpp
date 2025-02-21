@@ -10,12 +10,12 @@
 #include "./image.hpp"
 
 /* load a color image from a file in jpg or ppm*/
-color_image *color_image_load(const char *fname);
+ColorImage *ColorImageLoad(const char *fname);
 
 /* write the color image to a ppn file */
-void color_image_write(const char *fname, const color_image *img);
+void ColorImageWrite(const char *fname, const ColorImage *img);
 
 /* write the gray image to a ppn file */
-void gray_image_write(const char *fname, const gray_image *img);
+void GrayImageWrite(const char *fname, const GrayImage *img);
 
-#endif  // !SRC_IMAGE_IO_HPP
+#endif // !SRC_IMAGE_IO_HPP

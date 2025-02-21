@@ -9,112 +9,123 @@
 // PPM
 
 typedef struct {
-  int magic;
-  int width;
-  int height;
-  int pixmax;
+    int magic;
+    int width;
+    int height;
+    int pixmax;
 } ppm_hdr_t;
 
-static void get_magic(FILE *fp, ppm_hdr_t *ppm_hdr) {
-  char str[1024];
-  fgets(str, 1024, fp);
-  if (str[0] == 'P' && (str[1] <= '6' || str[1] >= '1')) {
-    ppm_hdr->magic = str[1] - '0';
-  }
+static void GetMagic(FILE *fp, ppm_hdr_t *ppm_hdr)
+{
+    char str[1024];
+    fgets(str, 1024, fp);
+    if (str[0] == 'P' && (str[1] <= '6' || str[1] >= '1')) {
+        ppm_hdr->magic = str[1] - '0';
+    }
 }
 
-static int skip_comment(FILE *fp) {
-  char c;
-  do {
-    c = (char)fgetc(fp);
-  } while (c == ' ' || c == '\t' || c == '\n');
-  if (c == '#') {
+static int SkipComment(FILE *fp)
+{
+    char c;
     do {
-      c = (char)fgetc(fp);
+        c = (char)fgetc(fp);
+    } while (c == ' ' || c == '\t' || c == '\n');
+    if (c == '#') {
+        do {
+            c = (char)fgetc(fp);
 
-    } while (c != 0x0A);
+        } while (c != 0x0A);
+        return 1;
+    } else {
+        ungetc(c, fp);
+    }
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void SkipComments(FILE *fp)
+{
+    while (SkipComment(fp))
+        ;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int GetImageSize(FILE *fp, ppm_hdr_t *ppm_hdr)
+{
+    SkipComments(fp);
+    if (fscanf(fp, "%d %d", &ppm_hdr->width, &ppm_hdr->height) != 2) {
+        fprintf(stderr, "Warning: PGM --> File currupted\n");
+        return 0;
+    }
     return 1;
-  } else {
-    ungetc(c, fp);
-  }
-  return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void skip_comments(FILE *fp) { while (skip_comment(fp)); }
-
-/*----------------------------------------------------------------------------*/
-
-static int get_image_size(FILE *fp, ppm_hdr_t *ppm_hdr) {
-  skip_comments(fp);
-  if (fscanf(fp, "%d %d", &ppm_hdr->width, &ppm_hdr->height) != 2) {
-    fprintf(stderr, "Warning: PGM --> File currupted\n");
-    return 0;
-  }
-  return 1;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int get_pixmax(FILE *fp, ppm_hdr_t *ppm_hdr) {
-  skip_comments(fp);
-  ppm_hdr->pixmax = 1;
-  if (ppm_hdr->magic == 2 || ppm_hdr->magic == 3 || ppm_hdr->magic == 5 || ppm_hdr->magic == 6) {
-    if (fscanf(fp, "%d", &ppm_hdr->pixmax) != 1) {
-      fprintf(stderr, "Warning: PGM --> pixmax not valid\n");
-      return 0;
+static int GetPixmax(FILE *fp, ppm_hdr_t *ppm_hdr)
+{
+    SkipComments(fp);
+    ppm_hdr->pixmax = 1;
+    if (ppm_hdr->magic == 2 || ppm_hdr->magic == 3 || ppm_hdr->magic == 5 || ppm_hdr->magic == 6) {
+        if (fscanf(fp, "%d", &ppm_hdr->pixmax) != 1) {
+            fprintf(stderr, "Warning: PGM --> pixmax not valid\n");
+            return 0;
+        }
     }
-  }
-  fgetc(fp);
-  return 1;
+    fgetc(fp);
+    return 1;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int get_ppm_hdr(FILE *fp, ppm_hdr_t *ppm_hdr) {
-  get_magic(fp, ppm_hdr);
-  if (!get_image_size(fp, ppm_hdr)) {
-    return 0;
-  }
-  if (!get_pixmax(fp, ppm_hdr)) {
-    return 0;
-  }
-  return 1;
-}
-
-static void raw_read_color(FILE *fp, color_image *image) {
-  int j;
-  for (j = 0; j < image->height; j++) {
-    int o = j * image->stride, i;
-    for (i = 0; i < image->width; i++, o++) {
-      image->data1[o] = (float)fgetc(fp);
-      image->data2[o] = (float)fgetc(fp);
-      image->data3[o] = (float)fgetc(fp);
+static int GetPpmHdr(FILE *fp, ppm_hdr_t *ppm_hdr)
+{
+    GetMagic(fp, ppm_hdr);
+    if (!GetImageSize(fp, ppm_hdr)) {
+        return 0;
     }
-  }
+    if (!GetPixmax(fp, ppm_hdr)) {
+        return 0;
+    }
+    return 1;
 }
 
-color_image *color_image_pnm_load(FILE *fp) {
-  color_image *image = NULL;
-  ppm_hdr_t ppm_hdr;
-  if (!get_ppm_hdr(fp, &ppm_hdr)) {
-    return NULL;
-  }
-  switch (ppm_hdr.magic) {
-    case 1: /* PBM ASCII */
-    case 2: /* PGM ASCII */
-    case 3: /* PPM ASCII */
-    case 4: /* PBM RAW */
-    case 5: /* PGM RAW */
-      fprintf(stderr, "color_image_pnm_load: only PPM raw with maxval 255 supported\n");
-      break;
-    case 6: /* PPM RAW */
-      image = color_image_new(ppm_hdr.width, ppm_hdr.height);
-      raw_read_color(fp, image);
-      break;
-  }
-  return image;
+static void RawReadColor(FILE *fp, ColorImage *image)
+{
+    int j;
+    for (j = 0; j < image->height; j++) {
+        int o = j * image->stride, i;
+        for (i = 0; i < image->width; i++, o++) {
+            image->data1[o] = (float)fgetc(fp);
+            image->data2[o] = (float)fgetc(fp);
+            image->data3[o] = (float)fgetc(fp);
+        }
+    }
+}
+
+ColorImage *ColorImagePnmLoad(FILE *fp)
+{
+    ColorImage *image = NULL;
+    ppm_hdr_t ppm_hdr;
+    if (!GetPpmHdr(fp, &ppm_hdr)) {
+        return NULL;
+    }
+    switch (ppm_hdr.magic) {
+        case 1: /* PBM ASCII */
+        case 2: /* PGM ASCII */
+        case 3: /* PPM ASCII */
+        case 4: /* PBM RAW */
+        case 5: /* PGM RAW */
+            fprintf(stderr, "color_image_pnm_load: only PPM raw with maxval 255 supported\n");
+            break;
+        case 6: /* PPM RAW */
+            image = ColorImageNew(ppm_hdr.width, ppm_hdr.height);
+            RawReadColor(fp, image);
+            break;
+    }
+    return image;
 }
 
 // JPG
@@ -283,139 +294,142 @@ color_image *color_image_pnm_load(FILE *fp) {
 // GENERAL LOAD
 
 /* load a color image from a file */
-color_image *color_image_load(const char *fname) {
-  FILE *fp;
-  char magic[2];
-  unsigned short *magic_short = (unsigned short *)magic;
-  color_image *image = NULL;
-  if ((fp = fopen(fname, "rb")) == NULL) {
-    fprintf(stderr, "Error in color_image_load() - can not open file `%s' !\n", fname);
-    exit(1);
-  }
-  fread(magic, sizeof(char), 2, fp);
-  rewind(fp);
-  if (magic[0] == 'P' && (magic[1] == '6' || magic[1] == '5')) { /* PPM raw */
-    image = color_image_pnm_load(fp);
-  } else if (magic_short[0] == 0xd8ff) {
-    // image = color_image_jpeg_load(fp);
-    fprintf(stderr, "Error in color_image_jpeg_load() - can not open file `%s' !\n", fname);
-  } else if (magic[0] == -119 && magic[1] == 'P') {
-    // image = color_image_png_load(fp, fname);
-    fprintf(stderr, "Error in color_image_png_load() - can not open file `%s' !\n", fname);
-  } else {
-    fprintf(stderr, "Error in color_image_load(%s) - image format not supported, can only read jpg or ppm\n", fname);
-    exit(1);
-  }
-  fclose(fp);
-  return image;
+ColorImage *ColorImageLoad(const char *fname)
+{
+    FILE *fp;
+    char magic[2];
+    unsigned short *magic_short = (unsigned short *)magic;
+    ColorImage *image = NULL;
+    if ((fp = fopen(fname, "rb")) == NULL) {
+        fprintf(stderr, "Error in color_image_load() - can not open file `%s' !\n", fname);
+        exit(1);
+    }
+    fread(magic, sizeof(char), 2, fp);
+    rewind(fp);
+    if (magic[0] == 'P' && (magic[1] == '6' || magic[1] == '5')) { /* PPM raw */
+        image = ColorImagePnmLoad(fp);
+    } else if (magic_short[0] == 0xd8ff) {
+        // image = color_image_jpeg_load(fp);
+        fprintf(stderr, "Error in color_image_jpeg_load() - can not open file `%s' !\n", fname);
+    } else if (magic[0] == -119 && magic[1] == 'P') {
+        // image = color_image_png_load(fp, fname);
+        fprintf(stderr, "Error in color_image_png_load() - can not open file `%s' !\n", fname);
+    } else {
+        fprintf(stderr, "Error in color_image_load(%s) - image format not supported, can only read jpg or ppm\n", fname);
+        exit(1);
+    }
+    fclose(fp);
+    return image;
 }
 
 /* write the color image to a ppn file */
-void color_image_write(const char *fname, const color_image *img) {
-  FILE *fp;
-  if ((fp = fopen(fname, "wb")) == NULL) {
-    fprintf(stderr, "Error in color_image_load() - can not open file `%s' !\n", fname);
-    exit(1);
-  }
-
-  /*
-  PBM 是位图（bitmap），仅有黑与白，没有灰
-  PGM 是灰度图（grayscale）
-  PPM 是通过RGB三种颜色显现的图像（pixmaps）
-
-  P1 Bitmap ASCII
-  P2 Graymap ASCII
-  P3 Pixmap ASCII
-  P4 Bitmap Binary
-  P5 Graymap Binary
-  P6 Pixmap Binary
-
-  PPM图像格式分为两部分，分别为头部分和图像数据部分。
-  头部分：由3部分组成，通过换行或空格进行分割，一般PPM的标准是空格。
-  第1部分：P3或P6，指明PPM的编码格式，
-  第2部分：图像的宽度和高度，通过ASCII表示，
-  第3部分：最大像素值，0-255字节表示。
-
-  图像数据部分：
-  ASCII格式：按RGB的顺序排列，RGB中间用空格隔开，图片每一行用回车隔开。
-  Binary格式：PPM用24bits代表每一个像素，红绿蓝分别占用8bits。
-
-  https://segmentfault.com/a/1190000016443598?utm_source=sf-similar-article
-  */
-
-  // P6 1024 436 255
-
-  /* comment should start with # */
-  const char *comment = "# this is my new binary ppm file";
-
-  /* write header to the file */
-  fprintf(fp, "P6\n%s\n%d\n%d\n%d\n", comment, img->width, img->height, 255);
-  /* write image data bytes to the file */
-  for (int i = 0; i < img->height; ++i) {
-    for (int j = 0; j < img->width; ++j) {
-      const int index = i * img->stride + j;
-      unsigned char r = (unsigned char)img->data1[index];
-      unsigned char g = (unsigned char)img->data2[index];
-      unsigned char b = (unsigned char)img->data3[index];
-
-      fwrite(&r, sizeof(unsigned char), 1, fp);
-      fwrite(&g, sizeof(unsigned char), 1, fp);
-      fwrite(&b, sizeof(unsigned char), 1, fp);
+void ColorImageWrite(const char *fname, const ColorImage *img)
+{
+    FILE *fp;
+    if ((fp = fopen(fname, "wb")) == NULL) {
+        fprintf(stderr, "Error in color_image_load() - can not open file `%s' !\n", fname);
+        exit(1);
     }
-  }
 
-  fclose(fp);
+    /*
+    PBM 是位图（bitmap），仅有黑与白，没有灰
+    PGM 是灰度图（grayscale）
+    PPM 是通过RGB三种颜色显现的图像（pixmaps）
+
+    P1 Bitmap ASCII
+    P2 Graymap ASCII
+    P3 Pixmap ASCII
+    P4 Bitmap Binary
+    P5 Graymap Binary
+    P6 Pixmap Binary
+
+    PPM图像格式分为两部分，分别为头部分和图像数据部分。
+    头部分：由3部分组成，通过换行或空格进行分割，一般PPM的标准是空格。
+    第1部分：P3或P6，指明PPM的编码格式，
+    第2部分：图像的宽度和高度，通过ASCII表示，
+    第3部分：最大像素值，0-255字节表示。
+
+    图像数据部分：
+    ASCII格式：按RGB的顺序排列，RGB中间用空格隔开，图片每一行用回车隔开。
+    Binary格式：PPM用24bits代表每一个像素，红绿蓝分别占用8bits。
+
+    https://segmentfault.com/a/1190000016443598?utm_source=sf-similar-article
+    */
+
+    // P6 1024 436 255
+
+    /* comment should start with # */
+    const char *comment = "# this is my new binary ppm file";
+
+    /* write header to the file */
+    fprintf(fp, "P6\n%s\n%d\n%d\n%d\n", comment, img->width, img->height, 255);
+    /* write image data bytes to the file */
+    for (int i = 0; i < img->height; ++i) {
+        for (int j = 0; j < img->width; ++j) {
+            const int kIndex = i * img->stride + j;
+            unsigned char r = (unsigned char)img->data1[kIndex];
+            unsigned char g = (unsigned char)img->data2[kIndex];
+            unsigned char b = (unsigned char)img->data3[kIndex];
+
+            fwrite(&r, sizeof(unsigned char), 1, fp);
+            fwrite(&g, sizeof(unsigned char), 1, fp);
+            fwrite(&b, sizeof(unsigned char), 1, fp);
+        }
+    }
+
+    fclose(fp);
 }
 
 /* write the gray image to a ppn file */
-void gray_image_write(const char *fname, const gray_image *img) {
-  FILE *fp;
-  if ((fp = fopen(fname, "wb")) == NULL) {
-    fprintf(stderr, "Error in color_image_load() - can not open file `%s' !\n", fname);
-    exit(1);
-  }
-
-  /*
-  PBM 是位图（bitmap），仅有黑与白，没有灰
-  PGM 是灰度图（grayscale）
-  PPM 是通过RGB三种颜色显现的图像（pixmaps）
-
-  P1 Bitmap ASCII
-  P2 Graymap ASCII
-  P3 Pixmap ASCII
-  P4 Bitmap Binary
-  P5 Graymap Binary
-  P6 Pixmap Binary
-
-  PPM图像格式分为两部分，分别为头部分和图像数据部分。
-  头部分：由3部分组成，通过换行或空格进行分割，一般PPM的标准是空格。
-  第1部分：P3或P6，指明PPM的编码格式，
-  第2部分：图像的宽度和高度，通过ASCII表示，
-  第3部分：最大像素值，0-255字节表示。
-
-  图像数据部分：
-  ASCII格式：按RGB的顺序排列，RGB中间用空格隔开，图片每一行用回车隔开。
-  Binary格式：PPM用24bits代表每一个像素，红绿蓝分别占用8bits。
-
-  https://segmentfault.com/a/1190000016443598?utm_source=sf-similar-article
-  */
-
-  // P6 1024 436 255
-
-  /* comment should start with # */
-  const char *comment = "# this is my new binary ppm file";
-
-  /* write header to the file */
-  fprintf(fp, "P5\n%s\n%d\n%d\n%d\n", comment, img->width, img->height, 255);
-  /* write image data bytes to the file */
-  for (int i = 0; i < img->height; ++i) {
-    for (int j = 0; j < img->width; ++j) {
-      const int index = i * img->stride + j;
-      unsigned char val = (unsigned char)img->data[index];
-
-      fwrite(&val, sizeof(unsigned char), 1, fp);
+void GrayImageWrite(const char *fname, const GrayImage *img)
+{
+    FILE *fp;
+    if ((fp = fopen(fname, "wb")) == NULL) {
+        fprintf(stderr, "Error in color_image_load() - can not open file `%s' !\n", fname);
+        exit(1);
     }
-  }
 
-  fclose(fp);
+    /*
+    PBM 是位图（bitmap），仅有黑与白，没有灰
+    PGM 是灰度图（grayscale）
+    PPM 是通过RGB三种颜色显现的图像（pixmaps）
+
+    P1 Bitmap ASCII
+    P2 Graymap ASCII
+    P3 Pixmap ASCII
+    P4 Bitmap Binary
+    P5 Graymap Binary
+    P6 Pixmap Binary
+
+    PPM图像格式分为两部分，分别为头部分和图像数据部分。
+    头部分：由3部分组成，通过换行或空格进行分割，一般PPM的标准是空格。
+    第1部分：P3或P6，指明PPM的编码格式，
+    第2部分：图像的宽度和高度，通过ASCII表示，
+    第3部分：最大像素值，0-255字节表示。
+
+    图像数据部分：
+    ASCII格式：按RGB的顺序排列，RGB中间用空格隔开，图片每一行用回车隔开。
+    Binary格式：PPM用24bits代表每一个像素，红绿蓝分别占用8bits。
+
+    https://segmentfault.com/a/1190000016443598?utm_source=sf-similar-article
+    */
+
+    // P6 1024 436 255
+
+    /* comment should start with # */
+    const char *comment = "# this is my new binary ppm file";
+
+    /* write header to the file */
+    fprintf(fp, "P5\n%s\n%d\n%d\n%d\n", comment, img->width, img->height, 255);
+    /* write image data bytes to the file */
+    for (int i = 0; i < img->height; ++i) {
+        for (int j = 0; j < img->width; ++j) {
+            const int kIndex = i * img->stride + j;
+            unsigned char val = (unsigned char)img->data[kIndex];
+
+            fwrite(&val, sizeof(unsigned char), 1, fp);
+        }
+    }
+
+    fclose(fp);
 }
